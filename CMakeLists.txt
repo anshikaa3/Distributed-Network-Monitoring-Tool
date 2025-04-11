@@ -1,0 +1,52 @@
+PROJECT(dabbad C)
+
+FIND_PACKAGE(Doxygen)
+FIND_PACKAGE(Setcap REQUIRED)
+FIND_PACKAGE(NL REQUIRED)
+INCLUDE(Pod2Man)
+
+FILE(GLOB DABBAD_HDRS ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/include/${PROJECT_NAME}/*.h)
+
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/include
+                        ${CMAKE_SOURCE_DIR}/libdabba/include
+			${NL_INCLUDE_DIRS})
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/libdabba-rpc/include)
+INCLUDE_DIRECTORIES(${LIBDABBA_RPC_INCLUDE_DIR})
+
+IF(DOXYGEN_FOUND)
+	CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+	ADD_CUSTOM_TARGET(${PROJECT_NAME}-doc ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+	ADD_DEPENDENCIES(doc ${PROJECT_NAME}-doc)
+ENDIF(DOXYGEN_FOUND)
+
+ADD_EXECUTABLE(${PROJECT_NAME}
+	dabbad.c
+	interface.c
+	interface-status.c
+	interface-driver.c
+	interface-pause.c
+	interface-offload.c
+	interface-settings.c
+	interface-coalesce.c
+	interface-capabilities.c
+	interface-statistics.c
+	rpc.c
+	help.c
+	capture.c
+	replay.c
+	misc.c
+	thread.c
+	sock-filter.c
+)
+
+TARGET_LINK_LIBRARIES (${PROJECT_NAME} libdabba libdabba-rpc ${CMAKE_THREAD_LIBS_INIT} ${NL_LIBRARIES})
+
+POD2MAN(${CMAKE_CURRENT_SOURCE_DIR}/dabbad.c dabbad 8)
+
+INSTALL(FILES ${DABBAD_HDRS} DESTINATION include/dabbad COMPONENT headers)
+INSTALL(FILES scripts/dabba DESTINATION /etc/init.d PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+INSTALL(TARGETS ${PROJECT_NAME} DESTINATION sbin COMPONENT applications)
+INSTALL(CODE "EXECUTE_PROCESS(COMMAND ${SETCAP_EXECUTABLE} cap_net_raw,cap_ipc_lock,cap_net_admin=eip ${CMAKE_INSTALL_PREFIX}/sbin/${PROJECT_NAME})")
+
+ADD_CUSTOM_TARGET(${PROJECT_NAME}-setcap COMMAND ${SETCAP_EXECUTABLE} cap_sys_nice,cap_net_raw,cap_ipc_lock,cap_net_admin=eip ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME})
+ADD_DEPENDENCIES(setcap ${PROJECT_NAME}-setcap)

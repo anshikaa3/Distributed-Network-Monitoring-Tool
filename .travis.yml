@@ -1,0 +1,36 @@
+language: c
+
+# Run tests on tools compiled with gcc and clang
+compiler:
+  - gcc
+  - clang
+
+# Make sure CMake is installed on target
+install: sudo apt-get install cmake libnl-3-dev libnl-genl-3-dev libnl-route-3-dev libcap2-bin protobuf-c-compiler libprotobuf-c0-dev python-yaml libcap2-bin
+
+# Build a release version and get verbose output
+env:
+  - TEST_OPTS="-v"
+
+# Run the Build script
+script:
+ - mkdir _build
+ - cd _build
+ - cmake .. -DCMAKE_INSTALL_PREFIX=../_install -DCMAKE_BUILD_TYPE=Release $OPTIONS
+ - sudo make install
+
+# Run Tests
+after_script:
+ - ctest --output-on-failure
+
+# Only watch the master branch
+branches:
+  only:
+    - master
+
+notifications:
+  recipients:
+    - emmanuel.roullit@gmail.com
+  email:
+    on_success: change
+    on_failure: always
